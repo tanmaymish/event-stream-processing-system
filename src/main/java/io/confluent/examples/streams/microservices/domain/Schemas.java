@@ -68,6 +68,7 @@ public class Schemas {
     public static Topic<Long, Customer> CUSTOMERS;
     public static Topic<Product, Integer> WAREHOUSE_INVENTORY;
     public static Topic<String, OrderValidation> ORDER_VALIDATIONS;
+    public static Topic<String, String> EVENTS;
 
     static {
       createTopics();
@@ -80,6 +81,7 @@ public class Schemas {
       CUSTOMERS = new Topic<>("customers", Serdes.Long(), new SpecificAvroSerde<>());
       ORDER_VALIDATIONS = new Topic<>("order-validations", Serdes.String(), new SpecificAvroSerde<>());
       WAREHOUSE_INVENTORY = new Topic<>("warehouse-inventory", new ProductTypeSerde(), Serdes.Integer());
+      EVENTS = new Topic<>("events", Serdes.String(), Serdes.String());
       ORDER_VALUE_SERDE = new SpecificAvroSerde<>();
     }
   }

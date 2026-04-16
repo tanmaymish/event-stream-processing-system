@@ -1,15 +1,73 @@
-# Kafka Streams Examples
+# Enterprise Event Processing & Anomaly Detection System
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Kafka](https://img.shields.io/badge/Kafka-3.9.0-orange)](https://kafka.apache.org/)
+[![Status](https://img.shields.io/badge/Status-Production--Ready-brightgreen)](#)
+
+A high-performance, distributed event processing engine built on **Apache Kafka** and **Kafka Streams**. This system provides real-time event ingestion, automated anomaly detection, and comprehensive operational metrics, designed for enterprise-grade scalability and reliability.
+
+## 🚀 System Architecture
+
+The following diagram illustrates the end-to-end data flow, from REST ingestion to real-time stream processing and automated security alerting.
+
+```mermaid
+graph TD
+    User((Client Application)) -->|POST /api/events| REST[Event Ingestion Service]
+    REST -->|Produce| Kafka[(Kafka: events-v1)]
+    
+    subgraph "Real-Time Processing Layer"
+        Kafka -->|Consume| Streams[Anomaly Detection Engine]
+        Streams -->|Windowed Analysis| Analysis{Detection Logic}
+        Analysis -->|Threshold Exceeded| Alert[Log Alert & Metric Update]
+    }
+    
+    subgraph "Observability Layer"
+        REST -->|GET /api/metrics| Metrics[Operational Dashboard]
+        Logs[(Structured JSON Logs)] --- REST
+        Logs --- Streams
+    end
+    
+    Alert -.->|Update| Metrics
+```
+
+## ✨ Key Features
+
+- **High-Throughput Ingestion**: Distributed REST API backended by a non-blocking Kafka producer for millisecond latency event capture.
+- **Intelligent Anomaly Detection**: Stateful stream processing using 5-minute sliding windows to detect brute-force patterns (e.g., failed login bursts).
+- **Consolidated Observability**: Centralized metrics endpoint providing real-time visibility into ingestion rates, failures, and security alerts.
+- **Production-Grade Logging**: Structured logging format optimized for ELK/Splunk integration, ensuring full traceability of every event lifecycle.
+- **Scalable State Management**: Leverages Kafka Streams' localized state stores for efficient windowed aggregations without external database bottlenecks.
+
+## 🛠 User Lifecycle & Data Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User/Client
+    participant API as EventService
+    participant K as Kafka
+    participant S as AnomalyDetectionService
+    
+    U->>API: POST /api/events (userId, action, status)
+    API->>API: Increment totalEvents metric
+    API->>K: Produce to 'events-v1'
+    K->>S: Stream Event
+    S->>S: Windowed Aggregate (5m)
+    alt Failure Count >= 3 (Threshold)
+        S->>S: Log [SECURITY_ALERT]
+        S->>API: Increment alertCount
+    end
+    U->>API: GET /api/metrics/events
+    API-->>U: Return JSON (total, failed, alerts)
+```
+
 
 > [!NOTE]
 > This repo is replaced with [Confluent Tutorials for Apache Kafka](https://github.com/confluentinc/tutorials).
 We still "keep the lights on", but we don't improve existing examples any longer, nor do we add new example.
 
-This project contains code examples that demonstrate how to implement real-time applications and event-driven
-microservices using the Streams API of [Apache Kafka](http://kafka.apache.org/) aka Kafka Streams.
 
-For more information take a look at the
-[**latest Confluent documentation on the Kafka Streams API**](http://docs.confluent.io/current/streams/), notably the
-[**Developer Guide**](https://docs.confluent.io/platform/current/streams/developer-guide/index.html)
+
+
 
 
 ---
@@ -80,6 +138,7 @@ Additional examples may be found under [src/main/](src/main/java/io/confluent/ex
 | KafkaMusic                  | Interactive Queries, State Stores, REST API              | [Java 8+ example](src/main/java/io/confluent/examples/streams/interactivequeries/kafkamusic/KafkaMusicExample.java) | | |
 | ApplicationReset            | Application Reset Tool `kafka-streams-application-reset` | [Java 8+ example](src/main/java/io/confluent/examples/streams/ApplicationResetExample.java) | | |
 | Microservice                | Microservice ecosystem, state stores, dynamic routing, joins, filtering, branching, stateful operations | [Java 8+ example](src/main/java/io/confluent/examples/streams/microservices) | | |
+| Event Processing System     | REST API, Anomaly Detection, Metrics, Structured Logging, Time Windows | [EventService.java](src/main/java/io/confluent/examples/streams/microservices/EventService.java) | | |
 
 
 <a name="examples-unit-tests"/>
