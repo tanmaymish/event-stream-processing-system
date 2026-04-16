@@ -15,13 +15,13 @@ graph TD
     User((Client Application)) -->|POST /api/events| REST[Event Ingestion Service]
     REST -->|Produce| Kafka[(Kafka: events-v1)]
     
-    subgraph "Real-Time Processing Layer"
+    subgraph RealTimeLayer [Real-Time Processing Layer]
         Kafka -->|Consume| Streams[Anomaly Detection Engine]
-        Streams -->|Windowed Analysis| Analysis{Detection Logic}
+        Streams -->|Windowed Analysis| Analysis[Detection Logic]
         Analysis -->|Threshold Exceeded| Alert[Log Alert & Metric Update]
-    }
+    end
     
-    subgraph "Observability Layer"
+    subgraph ObservabilityLayer [Observability Layer]
         REST -->|GET /api/metrics| Metrics[Operational Dashboard]
         Logs[(Structured JSON Logs)] --- REST
         Logs --- Streams
