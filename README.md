@@ -1,8 +1,12 @@
 # Enterprise Event Processing & Anomaly Detection System
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Kafka](https://img.shields.io/badge/Kafka-3.9.0-orange)](https://kafka.apache.org/)
-[![Status](https://img.shields.io/badge/Status-Production--Ready-brightgreen)](#)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://opensource.org/licenses/Apache-2.0)
+[![Kafka](https://img.shields.io/badge/Apache_Kafka-3.9.0-orange?style=flat-square&logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
+[![Java](https://img.shields.io/badge/Java-17-blue?style=flat-square&logo=vialogo&logoColor=white)](https://www.oracle.com/java/)
+[![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square&logo=githubactions&logoColor=white)](#)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)](#)
+[![REST](https://img.shields.io/badge/API-RESTful-005571?style=flat-square)](#)
+
 
 A high-performance, distributed event processing engine built on **Apache Kafka** and **Kafka Streams**. This system provides real-time event ingestion, automated anomaly detection, and comprehensive operational metrics, designed for enterprise-grade scalability and reliability.
 
