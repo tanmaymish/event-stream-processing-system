@@ -1,10 +1,11 @@
 # Stage 1: Build
 FROM maven:3.9-eclipse-temurin-17 AS builder
 WORKDIR /build
+COPY .mvn ./.mvn
 COPY pom.xml .
-RUN mvn dependency:go-offline -q 2>/dev/null || true
+RUN mvn dependency:go-offline -s .mvn/settings.xml -q 2>/dev/null || true
 COPY src ./src
-RUN mvn clean package -DskipTests -q
+RUN mvn clean package -DskipTests -q -s .mvn/settings.xml
 
 # Stage 2: Runtime
 FROM eclipse-temurin:17-jre-alpine
