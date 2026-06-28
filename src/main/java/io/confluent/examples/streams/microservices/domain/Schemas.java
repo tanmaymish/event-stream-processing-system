@@ -70,6 +70,12 @@ public class Schemas {
     public static Topic<String, OrderValidation> ORDER_VALIDATIONS;
     public static Topic<String, String> EVENTS;
 
+    // UPI India real-time payment topics
+    public static Topic<String, String> UPI_TRANSACTIONS;
+    public static Topic<String, String> UPI_TRANSACTIONS_P2P;
+    public static Topic<String, String> UPI_TRANSACTIONS_P2M;
+    public static Topic<String, String> UPI_FRAUD_ALERTS;
+
     static {
       createTopics();
     }
@@ -82,6 +88,13 @@ public class Schemas {
       ORDER_VALIDATIONS = new Topic<>("order-validations", Serdes.String(), new SpecificAvroSerde<>());
       WAREHOUSE_INVENTORY = new Topic<>("warehouse-inventory", new ProductTypeSerde(), Serdes.Integer());
       EVENTS = new Topic<>("events", Serdes.String(), Serdes.String());
+
+      // UPI India payment topics
+      UPI_TRANSACTIONS = new Topic<>("upi-transactions", Serdes.String(), Serdes.String());
+      UPI_TRANSACTIONS_P2P = new Topic<>("upi-transactions-p2p", Serdes.String(), Serdes.String());
+      UPI_TRANSACTIONS_P2M = new Topic<>("upi-transactions-p2m", Serdes.String(), Serdes.String());
+      UPI_FRAUD_ALERTS = new Topic<>("upi-fraud-alerts", Serdes.String(), Serdes.String());
+
       ORDER_VALUE_SERDE = new SpecificAvroSerde<>();
     }
   }

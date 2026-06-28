@@ -1,46 +1,175 @@
-# Enterprise Event Processing & Anomaly Detection System
+# India UPI Real-Time Payment Streaming System
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://opensource.org/licenses/Apache-2.0)
 [![Kafka](https://img.shields.io/badge/Apache_Kafka-3.9.0-orange?style=flat-square&logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
 [![Java](https://img.shields.io/badge/Java-17-blue?style=flat-square&logo=vialogo&logoColor=white)](https://www.oracle.com/java/)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square&logo=githubactions&logoColor=white)](#)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)](#)
-[![REST](https://img.shields.io/badge/API-RESTful-005571?style=flat-square)](#)
+[![UPI](https://img.shields.io/badge/NPCI-UPI-orange?style=flat-square)](#)
 
+A production-grade, distributed real-time streaming system modelled on **India's UPI (Unified Payments Interface)** — the world's largest real-time payments network processing **400+ million transactions/day** across 300+ million users. Built on Apache Kafka and Kafka Streams.
 
-A high-performance, distributed event processing engine built on **Apache Kafka** and **Kafka Streams**. This system provides real-time event ingestion, automated anomaly detection, and comprehensive operational metrics, designed for enterprise-grade scalability and reliability.
+## What This System Does
 
-## 🚀 System Architecture
+India's UPI ecosystem involves multiple banks, payment apps (PhonePe, Google Pay, Paytm, BHIM), and 25+ million merchants. Every ₹10 chai payment and ₹2L rent transfer flows through NPCI in real time. This system handles:
 
-The following diagram illustrates the end-to-end data flow, from REST ingestion to real-time stream processing and automated security alerting.
+- **Real-time ingestion** of UPI transactions via REST gateway (P2P + P2M routing)
+- **Multi-pattern fraud detection** via Kafka Streams windowed aggregations
+- **Live merchant analytics** — Swiggy, Zomato, Amazon, Ola revenue dashboards
+- **Inter-bank settlement tracking** — NPCI net position per bank (SBI, HDFC, ICICI, Axis...)
+- **Regional dashboards** — state-wise and city-wise UPI adoption analytics
+- **Realistic data simulation** — log-normal amount distribution, weighted city selection, 94% success rate
+
+## System Architecture
 
 ```mermaid
 graph TD
-    User((Client Application)) -->|POST /api/events| REST[Event Ingestion Service]
-    REST -->|Produce| Kafka[(Kafka: events-v1)]
-    
-    subgraph RealTimeLayer [Real-Time Processing Layer]
-        Kafka -->|Consume| Streams[Anomaly Detection Engine]
-        Streams -->|Windowed Analysis| Analysis[Detection Logic]
-        Analysis -->|Threshold Exceeded| Alert[Log Alert & Metric Update]
-    end
-    
-    subgraph ObservabilityLayer [Observability Layer]
-        REST -->|GET /api/metrics| Metrics[Operational Dashboard]
-        Logs[(Structured JSON Logs)] --- REST
-        Logs --- Streams
-    end
-    
-    Alert -.->|Update| Metrics
+    Sim[ProduceUpiTransactions<br/>Data Simulator] -->|50-4600 TPS| GW
+    Client((Mobile App<br/>PhonePe/GPay/Paytm)) -->|POST /upi/transaction| GW[UpiTransactionService<br/>:8090]
+
+    GW -->|all txns| T1[(upi-transactions)]
+    GW -->|P2P only| T2[(upi-transactions-p2p)]
+    GW -->|Merchant only| T3[(upi-transactions-p2m)]
+
+    T1 --> FD[UpiVelocityFraudService<br/>Kafka Streams]
+    T1 --> BS[BankSettlementService<br/>:8092 REST + KTable]
+    T1 --> RA[RegionalAnalyticsService<br/>:8093 REST]
+    T3 --> MA[MerchantAnalyticsService<br/>:8091 REST + KTable]
+
+    FD -->|VELOCITY >10/min| AL1[FRAUD_VELOCITY alert]
+    FD -->|FAILED_BURST >5/2min| AL2[FRAUD_FAILED_BURST alert]
+    FD -->|amount >=₹50k| AL3[FRAUD_HIGH_VALUE alert]
+    FD -->|geo-velocity| AL4[Multi-city pattern]
+
+    BS -->|GET /settlement/all| D1[Net debtor banks]
+    MA -->|GET /merchant/top| D2[Top merchants by revenue]
+    RA -->|GET /regional/top/states| D3[State leaderboard]
+    RA -->|GET /regional/failure-hotspots| D4[Bank downtime detection]
 ```
 
-## ✨ Key Features
+## Services & Ports
 
-- **High-Throughput Ingestion**: Distributed REST API backended by a non-blocking Kafka producer for millisecond latency event capture.
-- **Intelligent Anomaly Detection**: Stateful stream processing using 5-minute sliding windows to detect brute-force patterns (e.g., failed login bursts).
-- **Consolidated Observability**: Centralized metrics endpoint providing real-time visibility into ingestion rates, failures, and security alerts.
-- **Production-Grade Logging**: Structured logging format optimized for ELK/Splunk integration, ensuring full traceability of every event lifecycle.
-- **Scalable State Management**: Leverages Kafka Streams' localized state stores for efficient windowed aggregations without external database bottlenecks.
+| Service | Port | Description |
+|---|---|---|
+| `UpiTransactionService` | 8090 | REST gateway — ingests UPI transactions, routes to Kafka |
+| `MerchantAnalyticsService` | 8091 | Live merchant revenue KTable + REST queries |
+| `BankSettlementService` | 8092 | Inter-bank NPCI net settlement positions |
+| `RegionalAnalyticsService` | 8093 | State/city level UPI adoption analytics |
+| `UpiVelocityFraudService` | — | Stream processor — velocity/burst/high-value fraud |
+
+## Kafka Topics
+
+| Topic | Key | Purpose |
+|---|---|---|
+| `upi-transactions` | senderVpa | All UPI transactions (source of truth) |
+| `upi-transactions-p2p` | senderVpa | Peer-to-peer transfers only |
+| `upi-transactions-p2m` | merchantId | Merchant payments only |
+| `upi-fraud-alerts` | senderVpa | Fraud alerts from stream processors |
+
+## Fraud Detection Patterns
+
+1. **Velocity Fraud** — >10 transactions from same VPA in 1 minute (automated fraud scripts targeting QR codes)
+2. **Failed Burst** — >5 failed txns in 2 minutes (account takeover / UPI PIN testing)
+3. **High-Value Spike** — single txn ≥ ₹50,000 (mule account drain patterns)
+4. **Geo-Velocity** — same VPA active in multiple cities within 5 minutes
+
+## Quick Start
+
+```bash
+# Start Kafka
+docker-compose up -d
+
+# Start the UPI gateway (port 8090)
+java -cp target/kafka-streams-examples-*.jar \
+  io.confluent.examples.streams.microservices.UpiTransactionService
+
+# Start fraud detection
+java -cp target/kafka-streams-examples-*.jar \
+  io.confluent.examples.streams.microservices.UpiVelocityFraudService
+
+# Start merchant analytics (port 8091)
+java -cp target/kafka-streams-examples-*.jar \
+  io.confluent.examples.streams.microservices.MerchantAnalyticsService
+
+# Start bank settlement tracker (port 8092)
+java -cp target/kafka-streams-examples-*.jar \
+  io.confluent.examples.streams.microservices.BankSettlementService
+
+# Start regional analytics (port 8093)
+java -cp target/kafka-streams-examples-*.jar \
+  io.confluent.examples.streams.microservices.RegionalAnalyticsService
+
+# Run simulator: 100 TPS for 60 seconds
+java -cp target/kafka-streams-examples-*.jar \
+  io.confluent.examples.streams.microservices.util.ProduceUpiTransactions \
+  localhost:9092 100 60
+```
+
+## Example API Calls
+
+```bash
+# Submit a UPI transaction (Swiggy food order)
+curl -X POST http://localhost:8090/upi/transaction \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "txnId": "UPI1234567890",
+    "senderVpa": "rahul.sharma42@oksbi",
+    "receiverVpa": "swiggy_ind@okaxis",
+    "senderBank": "SBI",
+    "receiverBank": "Axis",
+    "amountInr": 349.00,
+    "status": "SUCCESS",
+    "category": "Food & Dining",
+    "merchantName": "Swiggy",
+    "merchantId": "swiggy_ind",
+    "senderCity": "Bangalore",
+    "senderState": "Karnataka",
+    "deviceType": "ANDROID",
+    "upiApp": "PHONEPE",
+    "timestamp": 1719500000000
+  }'
+
+# Get gateway metrics
+curl http://localhost:8090/upi/metrics
+
+# Top merchants by UPI revenue
+curl http://localhost:8091/merchant/top?limit=5
+
+# Merchants in Food & Dining category
+curl http://localhost:8091/merchant/category/Food%20%26%20Dining
+
+# SBI's net settlement position
+curl http://localhost:8092/settlement/SBI
+
+# All banks ranked by net position (positive = net receiver)
+curl http://localhost:8092/settlement/all
+
+# Banks in deficit (need to fund NPCI before settlement window)
+curl http://localhost:8092/settlement/debtors
+
+# Karnataka state stats
+curl http://localhost:8093/regional/state/Karnataka
+
+# Bangalore city stats
+curl http://localhost:8093/regional/city/Bangalore
+
+# Top 10 states by UPI volume
+curl http://localhost:8093/regional/top/states
+
+# States with high failure rates (bank downtime detection)
+curl http://localhost:8093/regional/failure-hotspots
+```
+
+## India UPI Data Modelled
+
+- **UPI Handles**: `@oksbi`, `@okhdfcbank`, `@okicici`, `@okaxis`, `@ybl` (PhonePe), `@paytm`, `@apl` (Amazon Pay), `@kotak`, `@pnb`, `@upi` (BHIM)
+- **Cities** (weighted by UPI adoption): Mumbai, Delhi, Bangalore, Hyderabad, Chennai, Pune, Kolkata, Ahmedabad, Jaipur, Lucknow, + 10 more
+- **Merchants**: Swiggy, Zomato, Amazon, Flipkart, Myntra, BigBasket, Blinkit, Ola, Uber, IRCTC, MakeMyTrip, Airtel, Jio, BESCOM and more
+- **Amount distribution**: Log-normal (₹10 chai → ₹2L rent) matching real UPI patterns
+- **Success rate**: 94% (matches NPCI reported UPI success rates)
+- **Failure reasons**: INSUFFICIENT_BALANCE, INVALID_VPA, WRONG_PIN, BANK_SERVER_DOWN, TRANSACTION_LIMIT_EXCEEDED, RBI_LIMIT_EXCEEDED
+
+## Original Event Processing System
 
 ## 🛠 User Lifecycle & Data Flow
 
