@@ -5,7 +5,7 @@ COPY .mvn ./.mvn
 COPY pom.xml .
 RUN mvn dependency:go-offline -s .mvn/settings.xml -q 2>/dev/null || true
 COPY src ./src
-RUN mvn clean package -DskipTests -q -s .mvn/settings.xml
+RUN mvn clean package -Dmaven.test.skip=true -q -s .mvn/settings.xml
 
 # Stage 2: Runtime
 FROM eclipse-temurin:17-jre-alpine
