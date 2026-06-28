@@ -15,6 +15,5 @@ COPY --from=builder /build/target/kafka-streams-examples-*-standalone.jar /app/u
 USER upi
 EXPOSE 8090 8091 8092 8093
 # Default: runs UpiTransactionService; override entrypoint in docker-compose per service
-ENTRYPOINT ["java", "-Xms256m", "-Xmx512m", "-cp", "/app/upi-streaming.jar",
-            "io.confluent.examples.streams.microservices.UpiTransactionService"]
+ENTRYPOINT ["java", "-Xms256m", "-Xmx512m", "-cp", "/app/upi-streaming.jar", "io.confluent.examples.streams.microservices.UpiTransactionService"]
 CMD ["kafka:29092", "http://schema-registry:8081", "8090"]
