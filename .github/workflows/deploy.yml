@@ -29,7 +29,7 @@ jobs:
           cache: maven
 
       - name: Build fat jar
-        run: mvn clean package -DskipTests -q
+        run: mvn clean package -DskipTests -q -s .mvn/settings.xml
 
       - name: Get jar name
         id: jar
