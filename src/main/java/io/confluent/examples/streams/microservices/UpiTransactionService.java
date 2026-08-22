@@ -55,7 +55,10 @@ public class UpiTransactionService implements Service {
   public static final AtomicLong failedTxns = new AtomicLong(0);
   public static final AtomicLong p2pTxns = new AtomicLong(0);
   public static final AtomicLong p2mTxns = new AtomicLong(0);
-  public static final AtomicLong fraudAlerts = new AtomicLong(0);
+  // There is deliberately no fraudAlerts counter here. It used to be incremented by
+  // UpiVelocityFraudService, which runs in its own JVM, so this process could never observe
+  // it and /upi/metrics reported a permanent zero. Alert counts belong to whoever consumes
+  // the upi-fraud-alerts topic.
 
   public UpiTransactionService(int port) {
     this.port = port;
@@ -122,12 +125,11 @@ public class UpiTransactionService implements Service {
     m.put("failedTransactions", failedTxns.get());
     m.put("p2pTransactions", p2pTxns.get());
     m.put("p2mTransactions", p2mTxns.get());
-    m.put("fraudAlerts", fraudAlerts.get());
     double successRate = totalTxns.get() > 0
         ? (successTxns.get() * 100.0 / totalTxns.get()) : 0.0;
     m.put("successRatePct", Math.round(successRate * 100.0) / 100.0);
-    log.info("[UPI_METRICS] total={} success={} failed={} alerts={}",
-        totalTxns.get(), successTxns.get(), failedTxns.get(), fraudAlerts.get());
+    log.info("[UPI_METRICS] total={} success={} failed={} p2p={} p2m={}",
+        totalTxns.get(), successTxns.get(), failedTxns.get(), p2pTxns.get(), p2mTxns.get());
     return m;
   }
 

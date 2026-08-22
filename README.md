@@ -3,11 +3,40 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://opensource.org/licenses/Apache-2.0)
 [![Kafka](https://img.shields.io/badge/Apache_Kafka-3.9.0-orange?style=flat-square&logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
 [![Java](https://img.shields.io/badge/Java-17-blue?style=flat-square&logo=vialogo&logoColor=white)](https://www.oracle.com/java/)
-[![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square&logo=githubactions&logoColor=white)](#)
+[![Build](https://github.com/tanmaymish/event-stream-processing-system/actions/workflows/deploy.yml/badge.svg)](https://github.com/tanmaymish/event-stream-processing-system/actions/workflows/deploy.yml)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)](#)
 [![UPI](https://img.shields.io/badge/NPCI-UPI-orange?style=flat-square)](#)
 
 A production-grade, distributed real-time streaming system modelled on **India's UPI (Unified Payments Interface)** — the world's largest real-time payments network processing **400+ million transactions/day** across 300+ million users. Built on Apache Kafka and Kafka Streams.
+
+## What is mine, and what this is built on
+
+This repository is a fork of [confluentinc/kafka-streams-examples](https://github.com/confluentinc/kafka-streams-examples)
+(Apache 2.0). Confluent's examples, their build, and their `microservices` order-management
+demo are theirs; everything from `Upi*` down is the UPI system I wrote on top of it.
+
+**Written by me** — the India UPI payment system, under
+`src/main/java/io/confluent/examples/streams/microservices/`:
+
+| File | What it does |
+| --- | --- |
+| `UpiTransactionService` | REST ingest gateway, fan-out to three topics |
+| `UpiVelocityFraudService` | Kafka Streams fraud topology, four patterns, alert sink |
+| `MerchantAnalyticsService` | Merchant revenue KTable + interactive queries |
+| `BankSettlementService` | Inter-bank net settlement positions |
+| `RegionalAnalyticsService` | State and city analytics, failure hotspots |
+| `util/ProduceUpiTransactions` | Load simulator with realistic UPI distributions |
+| `domain/beans/Upi*` | Transaction and alert wire formats |
+| `UpiVelocityFraudServiceTest` | Fraud topology tests (TopologyTestDriver) |
+| `docker-compose.upi.yml`, `Dockerfile` | Local stack and image |
+
+**Inherited from Confluent** — the Maven build, the Avro schemas and generated sources, the
+`orders`/`inventory`/`payments` microservices demo, and every non-UPI example and test in
+`src/`. The Confluent documentation for those still sits at the bottom of this README.
+
+The package names are Confluent's because the UPI services were added inside their source
+tree rather than beside it. That was a shortcut and it is the honest reason the code sits
+under `io.confluent.examples`.
 
 ## What This System Does
 
@@ -64,14 +93,45 @@ graph TD
 | `upi-transactions` | senderVpa | All UPI transactions (source of truth) |
 | `upi-transactions-p2p` | senderVpa | Peer-to-peer transfers only |
 | `upi-transactions-p2m` | merchantId | Merchant payments only |
-| `upi-fraud-alerts` | senderVpa | Fraud alerts from stream processors |
+| `upi-fraud-alerts` | senderVpa | `UpiAlertBean` JSON, one per detected pattern |
 
 ## Fraud Detection Patterns
 
-1. **Velocity Fraud** — >10 transactions from same VPA in 1 minute (automated fraud scripts targeting QR codes)
-2. **Failed Burst** — >5 failed txns in 2 minutes (account takeover / UPI PIN testing)
-3. **High-Value Spike** — single txn ≥ ₹50,000 (mule account drain patterns)
-4. **Geo-Velocity** — same VPA active in multiple cities within 5 minutes
+`UpiVelocityFraudService` runs four detectors over `upi-transactions` and publishes every
+finding to `upi-fraud-alerts` as a JSON `UpiAlertBean`, keyed by sender VPA. Alerts are data
+on a topic, not just log lines, so a case queue or dashboard can consume them.
+
+| Pattern | Fires when | Severity | Window |
+| --- | --- | --- | --- |
+| `VELOCITY_FRAUD` | 10 transactions from one VPA | CRITICAL | 1 min |
+| `FAILED_BURST` | 5 failed transactions from one VPA | HIGH | 2 min |
+| `HIGH_VALUE_SPIKE` | one success at or above ₹50,000 (CRITICAL at ₹1,00,000) | MEDIUM/CRITICAL | none |
+| `MULTI_CITY` | one VPA transacts from 2 distinct cities | HIGH | 5 min |
+
+Two properties matter as much as the thresholds:
+
+- **One alert per window, not one per record.** A detector fires on the record that *crosses*
+  the threshold, so a script sending 50 transactions a minute raises one alert instead of 41.
+  This is what keeps the alert topic usable as a work queue.
+- **`MULTI_CITY` genuinely correlates cities.** It aggregates the distinct city set per VPA
+  and fires when a second city joins it, and it fires only on the record that added that
+  city. Repeated activity in a single city is not geo-velocity and does not alert.
+
+Thresholds and windows are constants at the top of `UpiVelocityFraudService`.
+
+### Tests
+
+The fraud topology is driven by `TopologyTestDriver`, so the patterns are asserted on
+without a broker, a schema registry, or Docker:
+
+```bash
+mvn -B test -s .mvn/settings.xml -Dtest='Upi*Test' -Dcheckstyle.skip=true
+```
+
+The tests pin down the behaviour an on-call analyst depends on: an alert fires at the
+threshold and not before, it fires once per window, a window boundary resets the count,
+failures do not count towards velocity, and a malformed record cannot take the pipeline
+down. They run in CI on every push and the image build will not start until they pass.
 
 ## Quick Start
 
