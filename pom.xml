@@ -576,6 +576,30 @@
                             </testIncludes>
                         </configuration>
                     </plugin>
+                    <!--
+                      scala-maven-plugin joint-compiles the Java test sources alongside the
+                      Scala ones, so narrowing maven-compiler-plugin alone is not enough - and
+                      the inherited Scala integration tests import the same embedded cluster.
+                      Its default execution is unbound here and main-source Scala compilation
+                      is rebound on its own, so the Scala examples still build.
+                    -->
+                    <plugin>
+                        <groupId>net.alchim31.maven</groupId>
+                        <artifactId>scala-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>default</id>
+                                <phase>none</phase>
+                            </execution>
+                            <execution>
+                                <id>upi-scala-main-only</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
                 </plugins>
             </build>
         </profile>
