@@ -547,6 +547,39 @@
     </build>
 
     <profiles>
+        <!--
+          Compiles and runs only the UPI tests.
+
+          The test sources inherited from confluentinc/kafka-streams-examples do not compile
+          against the Kafka version this build resolves: KafkaEmbedded and
+          EmbeddedSingleNodeKafkaCluster reference KafkaClusterTestKit, org.apache.kafka.network,
+          ServerConfigs and ServerLogConfigs, which are not on the test classpath, and thirteen
+          inherited test classes depend on those two. That is why the Dockerfile builds with
+          -Dmaven.test.skip=true, which skips test compilation as well as execution.
+
+          Rather than let that pre-existing breakage keep the UPI tests from ever running, this
+          profile narrows test compilation to the UPI test sources, which have no dependency on
+          the embedded cluster - they drive the topology with TopologyTestDriver. Fixing the
+          inherited tests is a separate job: it means reconciling the Kafka test artifacts with
+          the version the Confluent parent pins.
+        -->
+        <profile>
+            <id>upi-tests</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <testIncludes>
+                                <testInclude>io/confluent/examples/streams/microservices/Upi*Test.java</testInclude>
+                            </testIncludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <profile>
             <id>docker</id>
             <activation>

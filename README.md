@@ -125,8 +125,15 @@ The fraud topology is driven by `TopologyTestDriver`, so the patterns are assert
 without a broker, a schema registry, or Docker:
 
 ```bash
-mvn -B test -s .mvn/settings.xml -Dtest='Upi*Test' -Dcheckstyle.skip=true
+mvn -B test -s .mvn/settings.xml -Pupi-tests -Dtest='Upi*Test' -Dcheckstyle.skip=true
 ```
+
+The `upi-tests` profile is needed because the test sources inherited from Confluent do not
+compile against the Kafka version this build resolves - `KafkaEmbedded` and
+`EmbeddedSingleNodeKafkaCluster` reference `KafkaClusterTestKit` and friends, and thirteen
+inherited test classes depend on those two. That is also why the Dockerfile builds with
+`-Dmaven.test.skip=true`. The profile narrows test compilation to the UPI sources, which
+need no embedded broker. Repairing the inherited tests is a separate piece of work.
 
 The tests pin down the behaviour an on-call analyst depends on: an alert fires at the
 threshold and not before, it fires once per window, a window boundary resets the count,

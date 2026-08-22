@@ -26,12 +26,13 @@ jobs:
           java-version: "17"
           cache: maven
 
-      # The image build runs with -Dmaven.test.skip=true, so this job is the only place
-      # the UPI tests actually execute. Scoped to Upi*Test: the rest of the suite inherited
-      # from confluentinc/kafka-streams-examples spins up embedded brokers and is far slower.
+      # The image build runs with -Dmaven.test.skip=true, so this job is the only place the
+      # UPI tests actually execute. The upi-tests profile narrows test compilation to the UPI
+      # sources: the inherited Confluent test sources do not compile against the Kafka version
+      # this build resolves. See the profile comment in pom.xml.
       - name: Run the UPI test suite
         run: >
-          mvn -B test -s .mvn/settings.xml
+          mvn -B test -s .mvn/settings.xml -Pupi-tests
           -Dcheckstyle.skip=true
           -Dtest='Upi*Test'
           -Dsurefire.failIfNoSpecifiedTests=false
